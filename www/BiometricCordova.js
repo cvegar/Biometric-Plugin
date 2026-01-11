@@ -1,124 +1,36 @@
-// Empty constructor
-function EntelBiometricPlugin() {}
+function BiometricCordova() {}
 
 /**
- * Scan Crypto (usa ScanActionCryptoActivity)
+ * scanCrypto(rightFingerCode, leftFingerCode, op, successCallback, errorCallback)
  *
- * Params:
- * - rightFingerCode: string|number  (se enviará como "hright")
- * - leftFingerCode:  string|number  (se enviará como "hleft")
- * - instructions:    string         (se enviará como "file")
- * - op:              boolean        (opcional, default false)
- *
- * successCallback recibe:
- * {
- *   huellab64,
- *   serialnumber,
- *   fingerprint_brand,
- *   bioversion
- * }
+ * rightFingerCode: "02", "2", etc.
+ * leftFingerCode : "07", "7", etc.
+ * op: boolean (en tu Activity, cuando op=false lee hright/hleft)
  */
-EntelBiometricPlugin.prototype.scanCrypto = function (
-  rightFingerCode,
-  leftFingerCode,
-  instructions,
-  op,
-  successCallback,
-  errorCallback
-) {
-  var options = {};
+BiometricCordova.prototype.scanCrypto = function (rightFingerCode, leftFingerCode, successCallback, errorCallback) {
 
-  // Normaliza a string tipo ["valor"] porque el Activity lo espera así.
-  function toBracketedString(value) {
-    if (value === null || value === undefined) return null;
+  var options = {
+    // OJO: tu ScanActionCryptoActivity espera strings con formato ["02"] etc.
+    hright: '["' + String(rightFingerCode) + '"]',
+    hleft:  '["' + String(leftFingerCode) + '"]',
+    // op: (op === true)
+    // file eliminado a propósito
+  };
 
-    var v = String(value).trim();
-
-    // Si ya viene como [ ... ], lo dejamos
-    if (v.indexOf("[") === 0 && v.lastIndexOf("]") === v.length - 1) {
-      return v;
-    }
-
-    // Escapar comillas
-    v = v.replace(/"/g, '\\"');
-    return '["' + v + '"]';
-  }
-
-  // op default false (caso OutSystems)
-  options.op = (op === true);
-
-  // ScanActionCryptoActivity espera: file, hright, hleft
-  options.file = toBracketedString(instructions);
-
-  // Soporta el typo legado "righFingerCode" si lo sigues usando en otro lado.
-  options.hright = toBracketedString(rightFingerCode);
-  options.hleft  = toBracketedString(leftFingerCode);
-
-  // Validaciones mínimas para evitar que el Activity explote por substring/replace
-  if (!instructions || String(instructions).trim() === "") {
-    return errorCallback && errorCallback("Missing parameter: instructions");
-  }
-  if (!options.op && (!rightFingerCode || !leftFingerCode)) {
-    return errorCallback && errorCallback("Missing parameters: rightFingerCode and leftFingerCode (required when op=false)");
-  }
-
-  cordova.exec(successCallback, errorCallback, "EntelBiometricPlugin", "scanCrypto", [options]);
+  cordova.exec(successCallback, errorCallback, "BiometricCordova", "scanCrypto", [options]);
 };
 
-/**
- * Alias compatible con 4Fingers (por si quieres llamarlo como getwsq)
- * Firma igual que tu ejemplo: (righFingerCode, leftFingerCode, liveness, type, success, error)
- *
- * Nota: liveness y type NO los usa ScanActionCryptoActivity actualmente,
- * pero los mando por si luego los necesitas en Android.
- */
-EntelBiometricPlugin.prototype.getwsq = function (
-  righFingerCode,
-  leftFingerCode,
-  liveness,
-  type,
-  successCallback,
-  errorCallback
-) {
-  var options = {};
+// Instalación en window.plugins
+BiometricCordova.install = function () {
+  window.plugins = window.plugins || {};
+  window.plugins.BiometricCordova = new BiometricCordova();
 
-  function toBracketedString(value) {
-    if (value === null || value === undefined) return null;
-    var v = String(value).trim();
-    if (v.indexOf("[") === 0 && v.lastIndexOf("]") === v.length - 1) return v;
-    v = v.replace(/"/g, '\\"');
-    return '["' + v + '"]';
-  }
+  // Alias opcional por compatibilidad si antes llamabas a EntelBiometricPlugin
+  window.plugins.EntelBiometricPlugin = window.plugins.BiometricCordova;
 
-  options.op = false;
-
-  // En 4Fingers viene "righFingerCode" (typo). Lo mapeo al hright.
-  options.hright = toBracketedString(righFingerCode);
-  options.hleft  = toBracketedString(leftFingerCode);
-
-  // instructions no existe en la firma original, así que puedes definir un default
-  // o pasarlo en "type" si lo deseas. Aquí dejo un default seguro.
-  // Si tú ya tienes un valor real, cámbialo.
-  options.file = toBracketedString("default");
-
-  // Paso extra info por si luego lo usas en Android
-  options.liveness = liveness;
-  options.type = type;
-
-  if (!options.hright || !options.hleft) {
-    return errorCallback && errorCallback("Missing finger codes: righFingerCode and leftFingerCode");
-  }
-
-  cordova.exec(successCallback, errorCallback, "EntelBiometricPlugin", "scanCrypto", [options]);
+  return window.plugins.BiometricCordova;
 };
 
-// Installation constructor that binds EntelBiometricPlugin to window
-EntelBiometricPlugin.install = function () {
-  if (!window.plugins) {
-    window.plugins = {};
-  }
-  window.plugins.EntelBiometricPlugin = new EntelBiometricPlugin();
-  return window.plugins.EntelBiometricPlugin;
-};
+cordova.addConstructor(BiometricCordova.install);
 
-cordova.addConstructor(EntelBiometricPlugin.install);
+module.exports = new BiometricCordova();
