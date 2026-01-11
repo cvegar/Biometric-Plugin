@@ -44,7 +44,7 @@ public class EntelFingerPlugin extends CordovaPlugin {
 
             // IMPORTANT: ScanActionCryptoActivity hace substring(2, len-2) sobre "file"
             // Así que lo enviamos como ["valor"] para que sea seguro.
-            intent.putExtra("file", normalizeToBracketedString(instructions));
+            //intent.putExtra("file", normalizeToBracketedString(instructions));
             
 
             if (!op) {
